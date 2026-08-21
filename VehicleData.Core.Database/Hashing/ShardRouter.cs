@@ -4,17 +4,20 @@ public interface IShardRouter
 {
     string GetConnectionString(string entityKey);
     string GetShardIdentifier(string entityKey);
+    IEnumerable<string> GetAllShardConnectionStrings();
 }
 
 public class ShardRouter : IShardRouter
 {
     private readonly ConsistentHashRing<ShardInfo> _hashRing;
+    private readonly List<ShardInfo> _shards;
 
     public ShardRouter(IEnumerable<ShardInfo> initialShards)
     {
+        _shards = initialShards.ToList();
         _hashRing = new ConsistentHashRing<ShardInfo>(virtualNodeReplicas: 150);
 
-        foreach (var shard in initialShards)
+        foreach (var shard in _shards)
         {
             _hashRing.AddShard(shard.ShardId, shard);
         }
@@ -29,6 +32,11 @@ public class ShardRouter : IShardRouter
     public string GetShardIdentifier(string entityKey)
     {
         return _hashRing.GetShard(entityKey).ShardId;
+    }
+
+    public IEnumerable<string> GetAllShardConnectionStrings()
+    {
+        return _shards.Select(s => s.ConnectionString).Distinct();
     }
 }
 

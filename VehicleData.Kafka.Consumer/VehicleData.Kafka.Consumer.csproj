@@ -8,6 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\VehicleData.Core.Constants\VehicleData.Core.Constants.csproj" />
       <ProjectReference Include="..\VehicleData.Core.Database\VehicleData.Core.Database.csproj" />
     </ItemGroup>
 

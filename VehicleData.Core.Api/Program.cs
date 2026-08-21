@@ -1,5 +1,7 @@
 using Confluent.Kafka;
 using Microsoft.AspNetCore.Mvc;
+using VehicleData.Core.Constants;
+using VehicleData.Core.Database.Extensions;
 using VehicleData.Core.Database.Hashing;
 using VehicleData.Core.Database.Model;
 
@@ -8,7 +10,20 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
 
+builder.Services.AddSingleton<IProducer<string, string>>(sp =>
+{
+    var config = new ProducerConfig();
+    
+    builder.Configuration.GetSection("Kafka").Bind(config);
+
+    return new ProducerBuilder<string, string>(config).Build();
+});
+
+builder.Services.AddSingleton<IShardRouter, ShardRouter>();
+
 var app = builder.Build();
+
+await app.ApplyShardMigrationsAsync();
 
 app.MapPost("/api/telemetry", async (
     [FromBody] TelemetryMessage request, 
@@ -25,7 +40,7 @@ app.MapPost("/api/telemetry", async (
         Value = payloadJson
     };
 
-    var result = await kafkaProducer.ProduceAsync("vehicle-telemetry", kafkaMessage);
+    var result = await kafkaProducer.ProduceAsync(VehicleContants.KafkaVehicleTelemetryTopic, kafkaMessage);
 
     return Results.Ok(new
     {
@@ -42,9 +57,5 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
-app.UseAuthorization();
-
-app.MapControllers();
 
 app.Run();
