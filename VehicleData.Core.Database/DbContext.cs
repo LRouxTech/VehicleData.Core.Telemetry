@@ -120,14 +120,19 @@ public class VehicleContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
         
-        modelBuilder.Entity<TelemetryMessage>().ToTable("TelemetryMessage");
-        modelBuilder.Entity<TelemetryMessage>().HasNoKey();
-        modelBuilder.Entity<TelemetryMessage>().Property(x => x.VehicleId).IsRequired().HasMaxLength(10);
-        modelBuilder.Entity<TelemetryMessage>().Property(x => x.Timestamp).IsRequired();
-        modelBuilder.Entity<TelemetryMessage>().Property(x => x.Speed).HasPrecision(2);
-        modelBuilder.Entity<TelemetryMessage>().Property(x => x.Longitude).HasPrecision(4);
-        modelBuilder.Entity<TelemetryMessage>().Property(x => x.Latitude).HasPrecision(4);
-        
+        modelBuilder.Entity<TelemetryMessage>(entity =>
+        {
+            entity.ToTable("TelemetryMessage");
+            entity.HasKey(e => e.TelemetryId);
+            entity.Property(x => x.VehicleId).IsRequired().HasMaxLength(10);
+            entity.Property(x => x.Timestamp).IsRequired();
+            entity.Property(x => x.Speed).HasPrecision(2);
+            entity.Property(x => x.Longitude).HasPrecision(4);
+            entity.Property(x => x.Latitude).HasPrecision(4);
+
+            entity.HasIndex(e => new { e.VehicleId, e.Timestamp });
+        });
+
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
             var properties = entityType.GetProperties()

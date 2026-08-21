@@ -1,7 +1,4 @@
-﻿using System.Data;
-using Microsoft.Data.SqlClient;
-
-namespace VehicleData.Core.Database.Hashing;
+﻿namespace VehicleData.Core.Database.Hashing;
 
 public interface IShardRouter
 {

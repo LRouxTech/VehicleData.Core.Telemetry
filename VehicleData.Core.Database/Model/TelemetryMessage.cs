@@ -2,6 +2,7 @@
 
 public class TelemetryMessage
 {
+    public int TelemetryId { get; set; }
     public required string VehicleId {get; set;} 
     public DateTime Timestamp {get; set;}  
     public double Latitude {get; set;} 
