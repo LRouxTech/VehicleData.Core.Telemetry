@@ -1,0 +1,40 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VehicleData.Core.Api", "VehicleData.Core.Api\VehicleData.Core.Api.csproj", "{54F45766-359A-4231-944D-0D4B5D0E9761}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VehicleData.Console.DataGenerator", "VehicleData.Console.DataGenerator\VehicleData.Console.DataGenerator.csproj", "{8F8B3A4A-7B11-48D4-BD0D-8B4AFA33C279}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VehicleData.Core.Database", "VehicleData.Core.Database\VehicleData.Core.Database.csproj", "{F613D430-A812-4736-9EAE-7D59E09BAD52}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VehicleData.Kafka.Consumer", "VehicleData.Kafka.Consumer\VehicleData.Kafka.Consumer.csproj", "{A04D6E93-9FC1-4A05-AA7F-1B3D2452A282}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VehicleData.Kafka.Producer", "VehicleData.Kafka.Producer\VehicleData.Kafka.Producer.csproj", "{70A82AC6-4DB9-47C6-82B4-97B8D9E0CAC2}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{54F45766-359A-4231-944D-0D4B5D0E9761}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{54F45766-359A-4231-944D-0D4B5D0E9761}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{54F45766-359A-4231-944D-0D4B5D0E9761}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{54F45766-359A-4231-944D-0D4B5D0E9761}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8F8B3A4A-7B11-48D4-BD0D-8B4AFA33C279}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8F8B3A4A-7B11-48D4-BD0D-8B4AFA33C279}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8F8B3A4A-7B11-48D4-BD0D-8B4AFA33C279}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8F8B3A4A-7B11-48D4-BD0D-8B4AFA33C279}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F613D430-A812-4736-9EAE-7D59E09BAD52}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F613D430-A812-4736-9EAE-7D59E09BAD52}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F613D430-A812-4736-9EAE-7D59E09BAD52}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F613D430-A812-4736-9EAE-7D59E09BAD52}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A04D6E93-9FC1-4A05-AA7F-1B3D2452A282}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A04D6E93-9FC1-4A05-AA7F-1B3D2452A282}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A04D6E93-9FC1-4A05-AA7F-1B3D2452A282}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A04D6E93-9FC1-4A05-AA7F-1B3D2452A282}.Release|Any CPU.Build.0 = Release|Any CPU
+		{70A82AC6-4DB9-47C6-82B4-97B8D9E0CAC2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{70A82AC6-4DB9-47C6-82B4-97B8D9E0CAC2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{70A82AC6-4DB9-47C6-82B4-97B8D9E0CAC2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{70A82AC6-4DB9-47C6-82B4-97B8D9E0CAC2}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
