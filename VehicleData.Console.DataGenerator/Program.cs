@@ -1,11 +1,19 @@
 ﻿
 using System.Net.Http.Json;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
+
+var builder = Host.CreateApplicationBuilder(args);
+
+builder.Configuration
+    .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
 
 using var httpClient = new HttpClient
 {
-    BaseAddress = new Uri("http://localhost:5000")
+    BaseAddress = new Uri("http://localhost:8080"),
 };
-
+httpClient.DefaultRequestHeaders.Add("X-API-Key", builder.Configuration["X-API-Key"]);
 var random = new Random();
 
 // Generate a pool of 1,000 distinct vehicle IDs (VEH-0001 to VEH-1000)

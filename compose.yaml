@@ -1,0 +1,144 @@
+﻿services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: telemetry-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - telemetry-net
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: telemetry-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+    networks:
+      - telemetry-net
+
+  # ---------------------------------------------------------------------------
+  # Database Shards (PostgreSQL)
+  # ---------------------------------------------------------------------------
+  shard-01:
+    image: postgres:16-alpine
+    container_name: telemetry-shard-01
+    environment:
+      POSTGRES_DB: telemetry_shard_01
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - shard_01_data:/var/lib/postgresql/data
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - telemetry-net
+
+  shard-02:
+    image: postgres:16-alpine
+    container_name: telemetry-shard-02
+    environment:
+      POSTGRES_DB: telemetry_shard_02
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - shard_02_data:/var/lib/postgresql/data
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - telemetry-net
+
+  shard-03:
+    image: postgres:16-alpine
+    container_name: telemetry-shard-03
+    environment:
+      POSTGRES_DB: telemetry_shard_03
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+    ports:
+      - "5434:5432"
+    volumes:
+      - shard_03_data:/var/lib/postgresql/data
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - telemetry-net
+
+  # ---------------------------------------------------------------------------
+  # Management UI (pgAdmin)
+  # ---------------------------------------------------------------------------
+  pgadmin:
+    image: dpage/pgadmin4:7
+    container_name: telemetry-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    volumes:
+      - D:/OwnProjects/LRouxTech/VehicleData.Core.Telemetry/servers.json:/pgadmin4/servers.json:ro
+    ports:
+      - "5050:80"
+    networks:
+      - telemetry-net
+
+  vehicledata.core.api:
+    image: vehicledata.core.api
+    container_name: vehicledata.core.api
+    depends_on:
+      shard-01:
+        condition: service_started
+      shard-02:
+        condition: service_started
+      shard-03:
+        condition: service_started
+    ports:
+      - "5051:8080"
+    build:
+      context: .
+      dockerfile: VehicleData.Core.Api/Dockerfile
+    volumes:
+      - "C:/Users/llode/AppData/Roaming/Microsoft/UserSecrets/ed30ecd1-44d0-4af2-a644-5e25739b5b47/secrets.json:/app/appsettings.json:ro"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - telemetry-net
+
+  telemetry-generator:
+    build:
+      context: .
+      dockerfile: VehicleData.Console.DataGenerator/Dockerfile
+    container_name: vehicledata.console.datagenerator
+    depends_on:
+      vehicledata.core.api:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    environment:
+      - API_URL=http://vehicledata.core.api:8080
+    restart: unless-stopped
+    networks:
+      - telemetry-net
+
+networks:
+  telemetry-net:
+    driver: bridge
+
+volumes:
+  shard_01_data:
+  shard_02_data:
+  shard_03_data:

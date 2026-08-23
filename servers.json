@@ -1,0 +1,34 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Shard 01",
+      "Group": "Telemetry Shards",
+      "Host": "shard-01",
+      "Port": 5432,
+      "MaintenanceDB": "telemetry_shard_01",
+      "Username": "postgres",
+      "SSLMode": "prefer",
+      "PassFile": "/pgadmin4/pgpass"
+    },
+    "2": {
+      "Name": "Shard 02",
+      "Group": "Telemetry Shards",
+      "Host": "shard-02",
+      "Port": 5432,
+      "MaintenanceDB": "telemetry_shard_02",
+      "Username": "postgres",
+      "SSLMode": "prefer",
+      "PassFile": "/pgadmin4/pgpass"
+    },
+    "3": {
+      "Name": "Shard 03",
+      "Group": "Telemetry Shards",
+      "Host": "shard-03",
+      "Port": 5432,
+      "MaintenanceDB": "telemetry_shard_03",
+      "Username": "postgres",
+      "SSLMode": "prefer",
+      "PassFile": "/pgadmin4/pgpass"
+    }
+  }
+}

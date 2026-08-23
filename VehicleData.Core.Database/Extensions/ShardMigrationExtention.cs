@@ -17,7 +17,7 @@ public static class ShardMigrationExtensions
 
         var connectionStrings = shardRouter.GetAllShardConnectionStrings();
 
-        logger.LogInformation("Starting automatic database migrations across all shards...");
+        logger.LogInformation("Starting automatic database migrations across all shards.");
 
         foreach (var connectionString in connectionStrings)
         {
