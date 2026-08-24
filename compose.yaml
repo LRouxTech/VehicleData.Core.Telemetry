@@ -22,6 +22,7 @@
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
@@ -29,6 +30,18 @@
     networks:
       - telemetry-net
 
+  kafdrop:
+    image: obsidiandynamics/kafdrop:4.0.1
+    container_name: telemetry-kafdrop
+    ports:
+      - "9000:9000"
+    environment:
+      KAFKA_BROKERCONNECT: kafka:29092
+      JVM_OPTS: "-Xms32M -Xmx256M"
+    depends_on:
+      - kafka
+    networks:
+      - telemetry-net
   # ---------------------------------------------------------------------------
   # Database Shards (PostgreSQL)
   # ---------------------------------------------------------------------------
@@ -93,6 +106,10 @@
     networks:
       - telemetry-net
 
+
+  # ---------------------------------------------------------------------------
+  # C# Apps
+  # ---------------------------------------------------------------------------
   vehicledata.core.api:
     image: vehicledata.core.api
     container_name: vehicledata.core.api
@@ -111,7 +128,7 @@
     volumes:
       - "C:/Users/llode/AppData/Roaming/Microsoft/UserSecrets/ed30ecd1-44d0-4af2-a644-5e25739b5b47/secrets.json:/app/appsettings.json:ro"
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8080/health" ]
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health/ready || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -133,7 +150,27 @@
     restart: unless-stopped
     networks:
       - telemetry-net
-
+      
+  telemetry-consumer:
+    build:
+      context: .
+      dockerfile: VehicleData.Kafka.Consumer/Dockerfile
+    deploy:
+      replicas: 2
+    depends_on:
+      kafka:
+        condition: service_started
+      shard-01:
+        condition: service_started
+      shard-02:
+        condition: service_started
+      shard-03:
+        condition: service_started
+    volumes:
+      - "C:/Users/llode/AppData/Roaming/Microsoft/UserSecrets/bf3b962a-7a6f-414a-9ff2-fc2c47f4532e/secrets.json:/app/appsettings.json:ro"
+    networks:
+      - telemetry-net
+        
 networks:
   telemetry-net:
     driver: bridge

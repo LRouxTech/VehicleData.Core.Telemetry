@@ -12,6 +12,19 @@ public class ApiKeyMiddleware(RequestDelegate next)
             return;
         }
         
+        var path = context.Request.Path.Value ?? string.Empty;
+        if (path.StartsWith("/health", StringComparison.OrdinalIgnoreCase))
+        {
+            await next(context);
+            return;
+        }
+        
+        if (path.StartsWith("/ping", StringComparison.OrdinalIgnoreCase))
+        {
+            await next(context);
+            return;
+        }
+        
         string? expectedApiKey = configuration["ApiKey"];
 
         if (string.IsNullOrEmpty(expectedApiKey))

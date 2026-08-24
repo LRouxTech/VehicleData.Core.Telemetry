@@ -9,11 +9,13 @@ builder.Configuration
     .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
 
+var uri = builder.Configuration["Uri"];
+
 using var httpClient = new HttpClient
 {
-    BaseAddress = new Uri("http://localhost:8080"),
+    BaseAddress = new Uri(uri ?? "http://localhost:8080"),
 };
-httpClient.DefaultRequestHeaders.Add("X-API-Key", builder.Configuration["X-API-Key"]);
+httpClient.DefaultRequestHeaders.Add("X-API-Key", builder.Configuration["ApiKey"]);
 var random = new Random();
 
 // Generate a pool of 1,000 distinct vehicle IDs (VEH-0001 to VEH-1000)
@@ -60,37 +62,45 @@ while (true)
 
     Console.WriteLine(new string('-', 80));
 
-    int nextDelayMs = random.Next(1000, 4001);
+    int nextDelayMs = random.Next(1000, 2001);
     await Task.Delay(nextDelayMs);
 }
 
 static async Task SeedBaselineDataAsync(HttpClient client, List<string> vehicles)
 {
-    Console.WriteLine($"Seeding baseline data for {vehicles.Count} vehicles...");
-    var random = new Random();
-    int successCount = 0;
-
-    var options = new ParallelOptions { MaxDegreeOfParallelism = 10 };
-
-    await Parallel.ForEachAsync(vehicles, options, async (vehicleId, cancellationToken) =>
+    try
     {
-        var telemetry = CreateTelemetryPayload(vehicleId, random);
+        Console.WriteLine($"Seeding baseline data for {vehicles.Count} vehicles...");
+        var random = new Random();
+        int successCount = 0;
 
-        try
+        var options = new ParallelOptions { MaxDegreeOfParallelism = 20 };
+
+        await Parallel.ForEachAsync(vehicles, options, async (vehicleId, cancellationToken) =>
         {
-            var response = await client.PostAsJsonAsync("/api/telemetry", telemetry, cancellationToken);
-            if (response.IsSuccessStatusCode)
+            var telemetry = CreateTelemetryPayload(vehicleId, random);
+
+            try
             {
-                Interlocked.Increment(ref successCount);
+                var response = await client.PostAsJsonAsync("/api/telemetry", telemetry, cancellationToken);
+                if (response.IsSuccessStatusCode)
+                {
+                    Interlocked.Increment(ref successCount);
+                }
             }
-        }
-        catch
-        {
-            // ignored
-        }
-    });
+            catch(Exception ex)
+            {
+                Console.WriteLine($"Error while seeding baseline data, {ex.Message}");
+            }
+        });
 
-    Console.WriteLine($"Baseline completed: {successCount}/{vehicles.Count} vehicles seeded.");
+        Console.WriteLine($"Baseline completed: {successCount}/{vehicles.Count} vehicles seeded.");
+    }
+    catch(Exception ex)
+    {
+        Console.WriteLine($"Error while seeding baseline data, {ex.Message}");
+    }
+
 }
 
 static object CreateTelemetryPayload(string vehicleId, Random random)

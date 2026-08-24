@@ -8,6 +8,10 @@ using VehicleData.Kafka.Consumer;
 
 var builder = Host.CreateApplicationBuilder(args);
 
+builder.Configuration
+    .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+
 builder.Services.AddSingleton<IShardRouter>(sp =>
 {
     var config = builder.Configuration;

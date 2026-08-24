@@ -35,10 +35,17 @@ builder.Services.AddOpenApi();
 
 var healthChecksBuilder = builder.Services.AddHealthChecks();
 
-var kafkaBootstrap = builder.Configuration["Kafka:BootstrapServers"] ?? "localhost:9092";
+var kafkaBootstrap = builder.Configuration["Kafka:BootstrapServers"] ?? "kafka:29092";
 healthChecksBuilder.AddKafka(
-    setup => setup.BootstrapServers = kafkaBootstrap,
+    config: new Confluent.Kafka.ProducerConfig
+    {
+        BootstrapServers = kafkaBootstrap,
+        MessageTimeoutMs = 3000,
+        RequestTimeoutMs = 3000
+    },
     name: "kafka-broker",
+    timeout: TimeSpan.FromSeconds(3),
+    tags: new[] { "ready", "messaging" },
     failureStatus: HealthStatus.Unhealthy);
 
 var shards = new[]
@@ -55,7 +62,8 @@ foreach (var (name, connectionString) in shards)
         healthChecksBuilder.AddNpgSql(
             connectionString,
             name: name,
-            failureStatus: HealthStatus.Unhealthy);
+            failureStatus: HealthStatus.Unhealthy,
+            timeout: TimeSpan.FromSeconds(3));
     }
 }
 
@@ -85,7 +93,12 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
 
 app.UseCors("AllowFrontend");
 
-app.UseMiddleware<ApiKeyMiddleware>();
+app.UseWhen(
+    context => !context.Request.Path.StartsWithSegments("/health") || !context.Request.Path.StartsWithSegments("/ping"),
+    appBuilder =>
+    {
+        appBuilder.UseMiddleware<ApiKeyMiddleware>();
+    });
 
 await app.ApplyShardMigrationsAsync();
 
@@ -97,8 +110,14 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.MapHealthChecks("/health", new HealthCheckOptions
+app.MapHealthChecks("/health/live", new HealthCheckOptions
 {
+    Predicate = _ => false
+});
+
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    
     ResponseWriter = async (context, report) =>
     {
         context.Response.ContentType = "application/json";
@@ -122,6 +141,8 @@ app.MapHealthChecks("/health", new HealthCheckOptions
         }));
     }
 });
+
+app.MapGet("/ping", () => "pong");
 
 app.MapPost("/api/telemetry", async (
     [FromBody] TelemetryMessage request, 
