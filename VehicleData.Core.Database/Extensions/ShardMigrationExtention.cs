@@ -30,8 +30,7 @@ public static class ShardMigrationExtensions
                 optionsBuilder.UseNpgsql(connectionString, x =>
                 {
                     x.MigrationsHistoryTable(
-                        Microsoft.EntityFrameworkCore.Migrations.HistoryRepository.DefaultTableName, 
-                        "Vehicle");
+                        Microsoft.EntityFrameworkCore.Migrations.HistoryRepository.DefaultTableName);
                     x.MigrationsAssembly("VehicleData.Core.Database");
                 });
 

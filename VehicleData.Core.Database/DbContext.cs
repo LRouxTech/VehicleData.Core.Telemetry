@@ -29,8 +29,7 @@ public class ShardedVehicleContextFactory : IShardedDbContextFactory<VehicleCont
         optionsBuilder.UseNpgsql(connectionString, npgsqlOptions =>
         {
             npgsqlOptions.MigrationsHistoryTable(
-                Microsoft.EntityFrameworkCore.Migrations.HistoryRepository.DefaultTableName, 
-                "Vehicle");
+                Microsoft.EntityFrameworkCore.Migrations.HistoryRepository.DefaultTableName);
             npgsqlOptions.MigrationsAssembly("VehicleData.Core.Database");
         });
 
@@ -51,7 +50,7 @@ public class VehicleContextDesignTimeFactory : IDesignTimeDbContextFactory<Vehic
         var optionsBuilder = new DbContextOptionsBuilder<VehicleContext>();
         optionsBuilder.UseNpgsql(connectionString, x =>
         {
-            x.MigrationsHistoryTable(HistoryRepository.DefaultTableName, "Vehicle");
+            x.MigrationsHistoryTable(HistoryRepository.DefaultTableName);
             x.MigrationsAssembly("VehicleData.Core.Database");
         });
 
@@ -107,7 +106,7 @@ public class VehicleContext : DbContext
         
             optionsBuilder.UseNpgsql(connectionString, x =>
             {
-                x.MigrationsHistoryTable(HistoryRepository.DefaultTableName, "Wash");
+                x.MigrationsHistoryTable(HistoryRepository.DefaultTableName);
                 x.MigrationsAssembly("VehicleData.Core.Database");
             });
         }

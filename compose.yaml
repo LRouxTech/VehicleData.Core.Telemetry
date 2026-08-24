@@ -27,6 +27,11 @@
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_LOG_SEGMENT_BYTES: 512000
+      # Retain roughly 1MB per partition (~1000 total messages across partitions)
+      KAFKA_LOG_RETENTION_BYTES: 1048576
+      # Check for log deletion every 5 seconds
+      KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS: 5000
     networks:
       - telemetry-net
 
@@ -54,9 +59,13 @@
       POSTGRES_PASSWORD: postgres_password
     ports:
       - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d telemetry_shard_01" ]
+      interval: 3s
+      timeout: 3s
+      retries: 5
     volumes:
       - shard_01_data:/var/lib/postgresql/data
-      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - telemetry-net
 
@@ -69,9 +78,13 @@
       POSTGRES_PASSWORD: postgres_password
     ports:
       - "5433:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d telemetry_shard_01" ]
+      interval: 3s
+      timeout: 3s
+      retries: 5
     volumes:
       - shard_02_data:/var/lib/postgresql/data
-      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - telemetry-net
 
@@ -84,9 +97,13 @@
       POSTGRES_PASSWORD: postgres_password
     ports:
       - "5434:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d telemetry_shard_01" ]
+      interval: 3s
+      timeout: 3s
+      retries: 5
     volumes:
       - shard_03_data:/var/lib/postgresql/data
-      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - telemetry-net
 
@@ -115,11 +132,11 @@
     container_name: vehicledata.core.api
     depends_on:
       shard-01:
-        condition: service_started
+        condition: service_healthy
       shard-02:
-        condition: service_started
+        condition: service_healthy
       shard-03:
-        condition: service_started
+        condition: service_healthy
     ports:
       - "5051:8080"
     build:
@@ -168,6 +185,16 @@
         condition: service_started
     volumes:
       - "C:/Users/llode/AppData/Roaming/Microsoft/UserSecrets/bf3b962a-7a6f-414a-9ff2-fc2c47f4532e/secrets.json:/app/appsettings.json:ro"
+    networks:
+      - telemetry-net
+      
+  mcp-postgres-shard01:
+    image: crystaldba/postgres-mcp:latest
+    container_name: mcp-postgres-shard01
+    environment:
+      - DATABASE_URI=postgresql://postgres:postgres_password@shard-01:5432/telemetry_shard_01
+    ports:
+      - "8001:8000"
     networks:
       - telemetry-net
         

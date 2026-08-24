@@ -12,8 +12,8 @@ using VehicleData.Core.Database;
 namespace VehicleData.Core.Database.Migrations
 {
     [DbContext(typeof(VehicleContext))]
-    [Migration("20260821125939_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20260824074314_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
