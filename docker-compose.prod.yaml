@@ -1,0 +1,214 @@
+﻿version: '3.8'
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: telemetry-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - telemetry-net
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: telemetry-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_LOG_SEGMENT_BYTES: 512000
+      KAFKA_LOG_RETENTION_BYTES: 1048576
+      KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS: 5000
+    networks:
+      - telemetry-net
+
+  kafdrop:
+    image: obsidiandynamics/kafdrop:4.0.1
+    container_name: telemetry-kafdrop
+    ports:
+      - "9000:9000"
+    environment:
+      KAFKA_BROKERCONNECT: kafka:29092
+      JVM_OPTS: "-Xms32M -Xmx256M"
+    depends_on:
+      - kafka
+    networks:
+      - telemetry-net
+
+  # ---------------------------------------------------------------------------
+  # Database Shards
+  # ---------------------------------------------------------------------------
+  shard-01:
+    image: postgres:16-alpine
+    container_name: telemetry-shard-01
+    environment:
+      POSTGRES_DB: telemetry_shard_01
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d telemetry_shard_01" ]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - shard_01_data:/var/lib/postgresql/data
+    networks:
+      - telemetry-net
+
+  shard-02:
+    image: postgres:16-alpine
+    container_name: telemetry-shard-02
+    environment:
+      POSTGRES_DB: telemetry_shard_02
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d telemetry_shard_02" ]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - shard_02_data:/var/lib/postgresql/data
+    networks:
+      - telemetry-net
+
+  shard-03:
+    image: postgres:16-alpine
+    container_name: telemetry-shard-03
+    environment:
+      POSTGRES_DB: telemetry_shard_03
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d telemetry_shard_03" ]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - shard_03_data:/var/lib/postgresql/data
+    networks:
+      - telemetry-net
+
+  # ---------------------------------------------------------------------------
+  # Management UI
+  # ---------------------------------------------------------------------------
+  pgadmin:
+    image: dpage/pgadmin4:7
+    container_name: telemetry-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    networks:
+      - telemetry-net
+
+  # ---------------------------------------------------------------------------
+  # C# Applications (GHCR Images)
+  # ---------------------------------------------------------------------------
+  vehicledata.core.api:
+    image: ghcr.io/lrouxtech/vehicledata.core.api:latest
+    container_name: vehicledata.core.api
+    depends_on:
+      shard-01:
+        condition: service_healthy
+      shard-02:
+        condition: service_healthy
+      shard-03:
+        condition: service_healthy
+    ports:
+      - "5051:8080"
+    volumes:
+      - /opt/vehicledata/config/api-appsettings.json:/app/appsettings.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - telemetry-net
+
+  telemetry-generator:
+    image: ghcr.io/lrouxtech/vehicledata.console.datagenerator:latest
+    container_name: vehicledata.console.datagenerator
+    depends_on:
+      vehicledata.core.api:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    environment:
+      - API_URL=http://vehicledata.core.api:8080
+    restart: unless-stopped
+    networks:
+      - telemetry-net
+
+  telemetry-consumer:
+    image: ghcr.io/lrouxtech/vehicledata.kafka.consumer:latest
+    deploy:
+      replicas: 2
+    depends_on:
+      kafka:
+        condition: service_started
+      shard-01:
+        condition: service_started
+      shard-02:
+        condition: service_started
+      shard-03:
+        condition: service_started
+    volumes:
+      - /opt/vehicledata/config/consumer-appsettings.json:/app/appsettings.json:ro
+    networks:
+      - telemetry-net
+
+  mcp-postgres-shard01:
+    image: crystaldba/postgres-mcp:latest
+    container_name: mcp-postgres-shard01
+    environment:
+      - DATABASE_URI=postgresql://postgres:postgres_password@shard-01:5432/telemetry_shard_01
+    ports:
+      - "8001:8000"
+    networks:
+      - telemetry-net
+
+  vehicledata.core.web:
+    image: ghcr.io/lrouxtech/vehicledata.core.web:latest
+    container_name: vehicledata.core.web
+    environment:
+      - ASPNETCORE_URLS=http://+:5010
+    depends_on:
+      vehicledata.core.api:
+        condition: service_healthy
+    ports:
+      - "5010:5010"
+    volumes:
+      - /opt/vehicledata/config/web-appsettings.json:/app/appsettings.json:ro
+    networks:
+      - telemetry-net
+
+networks:
+  telemetry-net:
+    driver: bridge
+
+volumes:
+  shard_01_data:
+  shard_02_data:
+  shard_03_data:
