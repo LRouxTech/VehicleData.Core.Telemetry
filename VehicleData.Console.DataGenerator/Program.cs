@@ -13,7 +13,7 @@ var uri = builder.Configuration["Uri"];
 
 using var httpClient = new HttpClient
 {
-    BaseAddress = new Uri(uri ?? "http://localhost:8080"),
+    BaseAddress = new Uri(uri ?? "http://vehicledata.core.api:8080"),
 };
 httpClient.DefaultRequestHeaders.Add("X-API-Key", builder.Configuration["ApiKey"]);
 var random = new Random();
@@ -33,7 +33,7 @@ while (true)
 {
     var selectedVehicles = vehiclePool
         .OrderBy(_ => random.Next())
-        .Take(10)
+        .Take(random.Next(1, 3))
         .ToList();
 
     foreach (var vehicleId in selectedVehicles)

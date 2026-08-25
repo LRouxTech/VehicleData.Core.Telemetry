@@ -80,7 +80,7 @@
         if (firstRender)
         {
             _cts = new CancellationTokenSource();
-            _timer = new PeriodicTimer(TimeSpan.FromSeconds(2));
+            _timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
             _ = RunPeriodicRefreshAsync(_cts.Token);
         }
     }
