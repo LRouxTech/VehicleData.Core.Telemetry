@@ -1,0 +1,161 @@
+﻿@page "/"
+@using Microsoft.AspNetCore.Components.Web
+@rendermode InteractiveServer
+@implements IDisposable
+@inject IHttpClientFactory HttpClientFactory
+
+<PageTitle>Live Vehicle Telemetry</PageTitle>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Live Vehicle Telemetry</h2>
+        <span class="badge bg-secondary">
+            Auto-refreshing every 5s (Last updated: @(_lastUpdated?.ToLocalTime().ToString("HH:mm:ss") ?? "Never"))
+        </span>
+    </div>
+
+    <table class="table table-striped table-hover border align-middle">
+        <thead class="table-dark">
+        <tr>
+            <th>Shard ID</th>
+            <th>Vehicle ID</th>
+            <th>Timestamp</th>
+            <th>Latitude</th>
+            <th>Longitude</th>
+            <th>Speed (km/h)</th>
+        </tr>
+        </thead>
+        <tbody>
+        @if (_telemetryData == null)
+        {
+            <tr>
+                <td colspan="6" class="text-center text-muted">Loading telemetry data...</td>
+            </tr>
+        }
+        else if (!_telemetryData.Any())
+        {
+            <tr>
+                <td colspan="6" class="text-center text-muted">No telemetry records found or API unavailable.</td>
+            </tr>
+        }
+        else
+        {
+            @foreach (var item in _telemetryData)
+            {
+                <tr>
+                    <td>
+                            <span class="badge @GetShardBadgeClass(item.ShardId) font-monospace fs-6">
+                                @(item.ShardId ?? "Unknown")
+                            </span>
+                    </td>
+                    <td class="fw-semibold">@item.VehicleId</td>
+                    <td>@item.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
+                    <td><code>@item.Latitude.ToString("F6")</code></td>
+                    <td><code>@item.Longitude.ToString("F6")</code></td>
+                    <td>
+                            <span class="@(item.Speed > 100 ? "text-danger fw-bold" : "")">
+                                @item.Speed.ToString("F1")
+                            </span>
+                    </td>
+                </tr>
+            }
+        }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    private List<TelemetryMessageDto>? _telemetryData;
+    private PeriodicTimer? _timer;
+    private CancellationTokenSource? _cts;
+    private DateTime? _lastUpdated;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await FetchTelemetryAsync();
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _cts = new CancellationTokenSource();
+            _timer = new PeriodicTimer(TimeSpan.FromSeconds(2));
+            _ = RunPeriodicRefreshAsync(_cts.Token);
+        }
+    }
+
+    private async Task RunPeriodicRefreshAsync(CancellationToken token)
+    {
+        try
+        {
+            while (await _timer!.WaitForNextTickAsync(token))
+            {
+                await FetchTelemetryAsync();
+                _lastUpdated = DateTime.Now;
+
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected upon disposal
+        }
+    }
+
+    private async Task FetchTelemetryAsync()
+    {
+        try
+        {
+            var client = HttpClientFactory.CreateClient("TelemetryApi");
+            var token = _cts?.Token ?? CancellationToken.None;
+
+            var result = await client.GetFromJsonAsync<List<TelemetryMessageDto>>("api/telemetry", token);
+
+            if (result != null)
+            {
+                _telemetryData = result;
+                _lastUpdated = DateTime.Now;
+            }
+        }
+        catch (Exception) when (_cts?.IsCancellationRequested == true)
+        {
+            // Ignore cancellation during component teardown
+        }
+        catch (Exception)
+        {
+            _telemetryData ??= new List<TelemetryMessageDto>();
+        }
+    }
+
+    private string GetShardBadgeClass(string? shardId)
+    {
+        if (string.IsNullOrWhiteSpace(shardId)) return "bg-secondary";
+
+        return shardId.ToLower() switch
+        {
+            var s when s.Contains("shard-01") || s.Contains("shard1") => "bg-primary",
+            var s when s.Contains("shard-02") || s.Contains("shard2") => "bg-success",
+            var s when s.Contains("shard-03") || s.Contains("shard3") => "bg-warning text-dark",
+            _ => "bg-info text-dark"
+        };
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _timer?.Dispose();
+    }
+
+    public class TelemetryMessageDto
+    {
+        public string? ShardId { get; set; }
+        public Guid TelemetryId { get; set; }
+        public string VehicleId { get; set; } = string.Empty;
+        public DateTime Timestamp { get; set; }
+        public double Speed { get; set; }
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
+    }
+}

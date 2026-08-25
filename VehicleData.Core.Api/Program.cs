@@ -4,12 +4,16 @@ using LodewykRoux.Core.Api.Middleware;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Scalar.AspNetCore;
 using VehicleData.Core.Constants;
+using VehicleData.Core.Database;
 using VehicleData.Core.Database.Extensions;
 using VehicleData.Core.Database.Hashing;
 using VehicleData.Core.Database.Model;
+using System.Linq;
+using VehicleData.Core.Api.ViewModel;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -83,6 +87,8 @@ builder.Services.AddSingleton<IProducer<string, string>>(sp =>
 
     return new ProducerBuilder<string, string>(config).Build();
 });
+
+builder.Services.AddScoped<IShardedDbContextFactory<VehicleContext>, ShardedVehicleContextFactory>();
 
 var app = builder.Build();
 
@@ -168,6 +174,46 @@ app.MapPost("/api/telemetry", async (
         KafkaPartition = result.Partition.Value,
         KafkaOffset = result.Offset.Value
     });
+});
+
+app.MapGet("/api/telemetry", async (
+    [FromServices] IShardedDbContextFactory<VehicleContext> contextFactory,
+    [FromServices] IShardRouter shardRouter) =>
+{
+    var connectionStrings = shardRouter.GetAllShardConnectionStrings();
+
+    var shardTasks = connectionStrings.Select(async connectionString =>
+    {
+        var builder = new Npgsql.NpgsqlConnectionStringBuilder(connectionString);
+        string shardName = builder.Host; // e.g. "shard-01" or "telemetry-shard-01"
+
+        using var dbContext = contextFactory.CreateDbContextFromConn(connectionString);
+        
+        return await dbContext.TelemetryMessages
+            .AsNoTracking()
+            .OrderByDescending(x => x.Timestamp)
+            .Take(20)
+            .Select(x => new TelemetryMessageShardDto
+            {
+                TelemetryId = x.TelemetryId,
+                VehicleId = x.VehicleId,
+                Latitude = x.Latitude,
+                Longitude = x.Longitude,
+                Speed = x.Speed,
+                Timestamp = x.Timestamp,
+                ShardId = shardName ?? "Unknown shard"
+            })
+            .ToListAsync();
+    });
+    
+    var resultsPerShard = await Task.WhenAll(shardTasks);
+    
+    var combinedTelemetry = resultsPerShard
+        .SelectMany(messages => messages)
+        .OrderByDescending(m => m.Timestamp)
+        .ToList();
+    
+    return Results.Ok(combinedTelemetry);
 });
 
 app.Run();

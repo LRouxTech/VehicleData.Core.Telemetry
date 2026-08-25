@@ -197,6 +197,24 @@
       - "8001:8000"
     networks:
       - telemetry-net
+      
+  vehicledata.core.web:
+    image: vehicledata.core.web
+    container_name: vehicledata.core.web
+    environment:
+      - ASPNETCORE_URLS=http://+:5010
+    depends_on:
+      vehicledata.core.api:
+        condition: service_healthy
+    ports:
+      - "5010:5010"
+    build:
+      context: .
+      dockerfile: VehicleData.Core.Web/Dockerfile
+    volumes:
+      - "C:/Users/llode/AppData/Roaming/Microsoft/UserSecrets/bf3b962a-7a6f-414a-9ff2-fc2c47f4532e/secrets.json:/app/appsettings.json:ro"
+    networks:
+      - telemetry-net
         
 networks:
   telemetry-net:
@@ -205,4 +223,5 @@ networks:
 volumes:
   shard_01_data:
   shard_02_data:
-  shard_03_data:
+  shard_03_data:  
+

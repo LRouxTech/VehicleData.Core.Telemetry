@@ -11,6 +11,7 @@ namespace VehicleData.Core.Database;
 public interface IShardedDbContextFactory<TContext> where TContext : DbContext
 {
     TContext CreateDbContext(string entityKey);
+    TContext CreateDbContextFromConn(string connString);
 }
 public class ShardedVehicleContextFactory : IShardedDbContextFactory<VehicleContext>
 {
@@ -27,6 +28,19 @@ public class ShardedVehicleContextFactory : IShardedDbContextFactory<VehicleCont
 
         var optionsBuilder = new DbContextOptionsBuilder<VehicleContext>();
         optionsBuilder.UseNpgsql(connectionString, npgsqlOptions =>
+        {
+            npgsqlOptions.MigrationsHistoryTable(
+                Microsoft.EntityFrameworkCore.Migrations.HistoryRepository.DefaultTableName);
+            npgsqlOptions.MigrationsAssembly("VehicleData.Core.Database");
+        });
+
+        return new VehicleContext(optionsBuilder.Options);
+    }
+    
+    public VehicleContext CreateDbContextFromConn(string connString)
+    {
+        var optionsBuilder = new DbContextOptionsBuilder<VehicleContext>();
+        optionsBuilder.UseNpgsql(connString, npgsqlOptions =>
         {
             npgsqlOptions.MigrationsHistoryTable(
                 Microsoft.EntityFrameworkCore.Migrations.HistoryRepository.DefaultTableName);
